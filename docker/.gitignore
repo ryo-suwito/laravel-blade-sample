@@ -1,0 +1,12 @@
+*
+!.gitignore
+!dev
+!staging
+!production
+!docker-compose.sh
+!docker-compose.yml
+
+!/exec
+!/nginx
+!/php
+!/php-fpm.d

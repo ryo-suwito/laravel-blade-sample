@@ -1,0 +1,7 @@
+#!/bin/bash
+
+PROJECT_PATH="$(realpath $(dirname $0)/../..)"
+
+ENV="${ENV:-dev}"
+
+"$PROJECT_PATH/docker/$ENV" exec -u 33 "${@}"

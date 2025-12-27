@@ -1,0 +1,64 @@
+version: '3'
+
+services:
+  app:
+    image: quetzalarc/php:7.4-fpm
+    restart: always
+    volumes:
+      - ${PROJECT_PATH}:/var/www/html
+    environment:
+      - TZ=Asia/Jakarta
+    links:
+      - redis
+    logging:
+      options:
+        max-file: '1'
+        max-size: '5m'
+
+  nginx:
+    image: nginx:alpine
+    restart: always
+    volumes:
+      - ${PROJECT_PATH}:/var/www/html
+      - ${PROJECT_PATH}/storage/logs/nginx:/var/log/nginx
+      - ${PROJECT_PATH}/docker/nginx/templates:/etc/nginx/templates
+    ports:
+      - 8000:80
+    environment:
+      - TZ=Asia/Jakarta
+      - FPM_HOST=app
+    links:
+      - app
+    logging:
+      options:
+        max-file: '1'
+        max-size: '5m'
+
+  redis:
+    image: redis:alpine
+    restart: always
+    volumes:
+      - ${PROJECT_PATH}/storage/redis:/data
+    logging:
+      options:
+        max-file: '1'
+        max-size: '5m'
+
+  supervisor:
+    image: quetzalarc/php:8.0-fpm
+    command: /usr/bin/supervisord
+    restart: always
+    volumes:
+      - ${PROJECT_PATH}:/var/www/html
+      - ${PROJECT_PATH}/storage/logs/supervisor:/var/log/supervisor
+      - ${PROJECT_PATH}/docker/supervisor/conf.d:/etc/supervisor/conf.d
+    environment:
+      - TZ=Asia/Jakarta
+    logging:
+      options:
+        max-file: '1'
+        max-size: '5m'
+
+networks:
+  default:
+    name: dev

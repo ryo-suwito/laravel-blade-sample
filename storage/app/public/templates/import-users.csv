@@ -1,0 +1,2 @@
+username;full_name;email;phone;gender;description;active;role_ids;partner_ids;merchant_branch_ids;beneficiary_ids
+example@yukk.me;YUKK;example@yukk.me;087650001;MALE;Put description here if needed;1;1001#10002;2001#2002;3001#3002;4001#4002

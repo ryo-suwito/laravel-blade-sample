@@ -1,0 +1,21 @@
+#!/bin/bash
+
+APP_ENV="dev"
+
+COMPOSE_FILE="docker-compose.yml"
+
+BASE_PATH="$(realpath $(dirname $0))"
+
+if [[ -f "$BASE_PATH/$APP_ENV.yml" ]];
+then
+  COMPOSE_FILE="$APP_ENV.yml"
+fi
+
+if [[ ! -f "$BASE_PATH/$COMPOSE_FILE" ]];
+then
+  echo "$COMPOSE_FILE not exists in $BASE_PATH"
+
+  exit
+fi
+
+APP_ENV="$APP_ENV" COMPOSE_FILE="$COMPOSE_FILE" /bin/bash "$BASE_PATH/docker-compose.sh" "${@}"

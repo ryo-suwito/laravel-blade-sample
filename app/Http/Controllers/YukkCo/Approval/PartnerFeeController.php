@@ -1,0 +1,120 @@
+<?php
+
+namespace App\Http\Controllers\YukkCo\Approval;
+
+use App\Actions\MerchantAcquisition\Filter;
+use App\Actions\MerchantAcquisition\GetApproval;
+use App\Actions\MerchantAcquisition\GetApprovals;
+use App\Actions\MerchantAcquisition\GetMaster;
+use App\Actions\MerchantAcquisition\GetStatusCounter;
+use App\Actions\MerchantAcquisition\UpdateApproval;
+use App\Helpers\ApiHelper;
+use App\Helpers\H;
+use App\Helpers\S;
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+
+class PartnerFeeController extends Controller
+{
+    protected $title = 'Partner Fees';
+    protected $tableName = 'partner_fees';
+
+    public function index(Request $request, GetApprovals $approvals, GetStatusCounter $counter)
+    {
+        $filter = new Filter($request, $this->tableName);
+        $approval = $approvals->get($filter->values());
+
+        return view('yukk_co.approval.index', [
+            'title' => $this->title,
+            'filter' => $filter->values(),
+            'filterCounter' => $filter->counter(),
+            'approvals' => $approval,
+            'statusCounter' => $counter->get($this->tableName),
+            'per_page' => $request->get('per_page'),
+            'from' => $approval->total() !== 0 ? $approval->perPage() * ($approval->currentPage() - 1) + 1 : 0,
+            'to' => $approval->perPage() * $approval->currentPage() > $approval->total() ? $approval->total() : $approval->perPage() * $approval->currentPage(),
+            'total' => $approval->total(),
+            'current_page' => $approval->currentPage(),
+            'last_page' => $approval->lastPage(),
+            'routing' => 'approval.fees.index',
+            'route' => 'approval.fees.action'
+        ]);
+    }
+
+    public function show($id, GetApproval $approval)
+    {
+        return view('yukk_co.approval.show', [
+            'title' => $this->title,
+            'mainMenuUrl' => route('approval.fees.index'),
+            'approval' => $approval->get($id, [
+                'table_name' => $this->tableName
+            ]),
+        ]);
+    }
+
+    public function update(Request $request, $id, UpdateApproval $approval)
+    {
+        $res = $approval->update($id, [
+            'table_name' => $this->tableName,
+            'action' => $request->action,
+        ]);
+        $message = null;
+        \Log::info(json_encode($res));
+        if($res && isset($res['schedule_at']) && $res['schedule_at']) {
+            $message = " Data changes are scheduled to be applied on ". $res['schedule_at'];
+        }
+        toast('success', ucfirst($request->action) . ' success!' . $message);
+
+        return redirect()->route('approval.fees.show', ['id' => $id]);
+    }
+
+    public function showMaster($id, GetMaster $approval)
+    {
+        return view('yukk_co.approval.master.show-partner-fee', [
+            'title' => $this->title,
+            'mainMenuUrl' => route('approval.fees.index'),
+            'approvalUrl' => route('approval.fees.show', $id),
+            'master' => $approval->get($id, [
+                'table_name' => $this->tableName
+            ]),
+        ]);
+    }
+
+    public function toggleStatus(Request $request){
+        $selectedIds = $request->get('ids', '');
+        $approveOrReject = $request->get('approveOrReject');
+
+        if(!$selectedIds) {
+            H::flashError("Please select at least one data.",true);
+            return redirect()->back();
+        }
+        try {
+            if(!is_array($selectedIds)) {
+                $selectedIds = explode(",", $selectedIds);
+            }
+        } catch (\Exception $e) {
+            Log::error($e);
+
+            H::flashError("Error while parsing selected ids.", true);
+            return redirect()->back();
+        }
+
+        $response = ApiHelper::requestGeneral("POST", ApiHelper::END_POINT_MENU_APPROVAL_ACTION_YUKK_CO, [
+            'form_params' => [
+                'action' => $approveOrReject,
+                'ids' => $selectedIds,
+                'table' => $this->tableName,
+                'email' => S::getUser()->email,
+            ],
+        ]);
+
+        if($response->is_ok){
+            toast('success', $response->status_message);
+            return redirect(route('approval.fees.index'));
+        }else{
+            toast('failed', $response->status_message);
+            return redirect(route('approval.fees.index'));
+        }
+    }
+}
